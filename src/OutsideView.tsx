@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Filter, Search, MapPin, Navigation, Car, Share2, Maximize2, Sparkles, Image as ImageIcon, Globe, Map as MapIcon } from 'lucide-react';
 import { campusBuildings } from './campusData';
+import { FloorName, POI, pois, CAMPUS_CENTER } from './data';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import cn from 'clsx';
 
 function ActionCard({ icon, color, title, sub }: any) {
@@ -68,6 +72,8 @@ function ComparisonMap({ isFullscreen }: { isFullscreen?: boolean }) {
           src="https://i.postimg.cc/J0hH8jHS/IMG-20260501-160533-jpg.jpg" 
           alt="Physical Campus Map"
           className="w-full h-full object-contain p-2 sm:p-4"
+          loading="lazy"
+          decoding="async"
         />
         <div className="absolute bottom-6 left-6 z-10 px-4 py-2 bg-slate-950/80 backdrop-blur rounded-lg border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest hidden sm:block">
           Original Photo
@@ -84,6 +90,8 @@ function ComparisonMap({ isFullscreen }: { isFullscreen?: boolean }) {
             src="https://i.postimg.cc/NMD2ZdLw/Chat-GPT-Image-May-2-2026-11-55-58-PM.png" 
             alt="Digital Schematic Map"
             className="w-full h-full object-contain p-2 sm:p-4"
+            loading="lazy"
+            decoding="async"
           />
           <div className="absolute bottom-6 right-6 z-10 px-4 py-2 bg-blue-600/90 backdrop-blur rounded-lg border border-blue-400/30 text-white text-[10px] font-black uppercase tracking-widest hidden sm:block">
             New Schematic
@@ -114,9 +122,123 @@ function ComparisonMap({ isFullscreen }: { isFullscreen?: boolean }) {
   );
 }
 
-export default function OutsideView({ realMapNode, isFullscreen }: { realMapNode?: React.ReactNode, isFullscreen?: boolean }) {
+function MapController({ selectedPOI, center }: { selectedPOI: POI | null, center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    
+    // Invalidate size in case of hidden/shown map container giving NaNs
+    setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch (e) {}
+    }, 100);
+
+    try {
+      const isValidCoord = (c: any) => typeof c === 'number' && !Number.isNaN(c) && isFinite(c);
+      const size = map.getSize();
+      const canAnimate = size.x > 0 && size.y > 0;
+
+      if (selectedPOI && isValidCoord(selectedPOI.lat) && isValidCoord(selectedPOI.lng)) {
+        if (canAnimate) {
+            map.flyTo([selectedPOI.lat, selectedPOI.lng], 20, { animate: true, duration: 0.8 });
+        } else {
+            map.setView([selectedPOI.lat, selectedPOI.lng], 20, { animate: false });
+        }
+      } else if (center && isValidCoord(center[0]) && isValidCoord(center[1])) {
+        if (canAnimate) {
+            map.flyTo(center, 18, { animate: true, duration: 0.8 });
+        } else {
+            map.setView(center, 18, { animate: false });
+        }
+      }
+    } catch (e) {
+      console.error("MapController Error", e);
+    }
+  }, [selectedPOI, map, center]);
+  return null;
+}
+
+function POIMarker({ poi, isSelected, onClick }: { key?: string | number, poi: POI, isSelected: boolean, onClick: () => void }) {
+  let bgColorClass = "bg-slate-900/80 backdrop-blur-md";
+  let textColorClass = "text-white";
+  if (poi.type === 'entrance') bgColorClass = "bg-emerald-600/80 backdrop-blur-md";
+  if (poi.type === 'facility') bgColorClass = "bg-amber-500/80 backdrop-blur-md";
+  if (poi.type === 'office') bgColorClass = "bg-purple-600/80 backdrop-blur-md";
+  if (poi.type === 'lab') bgColorClass = "bg-blue-600/80 backdrop-blur-md";
+
+  if (isSelected) {
+    bgColorClass = "bg-blue-600/90 backdrop-blur-md ring-4 ring-blue-600/30";
+    textColorClass = "text-white scale-110";
+  }
+
+  const iconHtml = `
+    <div class="relative flex flex-col items-center justify-center transition-all duration-300 transform -translate-y-1/2">
+      <div class="px-3 py-1.5 rounded-full shadow-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 border-2 border-white ${bgColorClass} ${textColorClass}">
+        ${poi.name}
+      </div>
+      <div class="w-1.5 h-1.5 rounded-full bg-white shadow-sm absolute -bottom-1 z-10 hidden"></div>
+      <div class="w-0.5 h-4 bg-white/80 absolute -bottom-4 shadow-sm z-0"></div>
+      <div class="w-2 h-2 rounded-full ${bgColorClass} absolute -bottom-4 z-10 border border-white"></div>
+    </div>
+  `;
+
+  const customIcon = L.divIcon({
+    html: iconHtml,
+    className: 'custom-poi-marker bg-transparent',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+
+  if (typeof poi.lat !== 'number' || typeof poi.lng !== 'number' || !isFinite(poi.lat) || !isFinite(poi.lng)) {
+    console.error("Invalid POI coordinates: ", poi);
+    return null;
+  }
+
+  return (
+    <Marker 
+      position={[poi.lat, poi.lng]} 
+      icon={customIcon}
+      eventHandlers={{ click: onClick }}
+    />
+  );
+}
+
+export function LeafletMap({ floor, selectedPOI, onSelectPOI }: { floor: FloorName, selectedPOI: POI | null, onSelectPOI: (poi: POI) => void }) {
+  const floorPOIs = pois.filter(p => p.floor === floor);
+
+  return (
+    <div className="w-full h-full relative isolate rounded-3xl overflow-hidden" style={{ minHeight: '400px' }}>
+      <MapContainer 
+        center={CAMPUS_CENTER} 
+        zoom={18} 
+        scrollWheelZoom={true}
+        className="w-full h-full z-0 font-sans"
+        style={{ width: '100%', height: '100%' }}
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; Google Maps'
+          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+          maxZoom={22}
+        />
+        <MapController selectedPOI={selectedPOI} center={CAMPUS_CENTER} />
+        {floorPOIs.map(poi => (
+          <POIMarker 
+            key={poi.id} 
+            poi={poi} 
+            isSelected={selectedPOI?.id === poi.id} 
+            onClick={() => onSelectPOI(poi)} 
+          />
+        ))}
+      </MapContainer>
+    </div>
+  );
+}
+
+export default function OutsideView({ floor, selectedPOI, onSelectPOI, isFullscreen }: { floor: FloorName, selectedPOI: POI | null, onSelectPOI: (poi: POI) => void, isFullscreen?: boolean }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapMode, setMapMode] = useState<'schematic' | 'satellite'>('schematic');
+  const [mapMode, setMapMode] = useState<'schematic' | 'satellite'>('satellite');
   const filteredBuildings = campusBuildings.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
@@ -125,7 +247,7 @@ export default function OutsideView({ realMapNode, isFullscreen }: { realMapNode
       {/* Map Container */}
       <div className={cn(
         "relative bg-white overflow-hidden shadow-xl border border-slate-100 isolate transition-all duration-300",
-        isFullscreen ? "flex-1 rounded-2xl h-full" : "aspect-[4/3] md:aspect-video rounded-3xl"
+        isFullscreen ? "flex-1 rounded-2xl h-full" : "min-h-[500px] aspect-[4/5] md:min-h-0 md:aspect-video rounded-3xl"
       )}>
         {/* Toggle Controls Overlay */}
         <div className="absolute top-4 right-4 z-50 flex bg-white/90 backdrop-blur-xl shadow-lg p-1 rounded-2xl border border-slate-200/50">
@@ -154,7 +276,7 @@ export default function OutsideView({ realMapNode, isFullscreen }: { realMapNode
             <ComparisonMap isFullscreen={isFullscreen} />
           ) : (
             <div className="w-full h-full bg-[#f8fafc] relative">
-              {realMapNode || <div className="flex items-center justify-center h-full text-slate-400 font-bold">Earth Map Initializing...</div>}
+              <LeafletMap floor={floor} selectedPOI={selectedPOI} onSelectPOI={onSelectPOI} />
               <div className="absolute inset-0 pointer-events-none p-8 flex flex-col justify-end">
                 <div className="inline-flex bg-slate-900/40 backdrop-blur p-2 rounded-lg text-[8px] text-white/60 font-medium">Real-time Satellite Data</div>
               </div>
@@ -202,7 +324,7 @@ export default function OutsideView({ realMapNode, isFullscreen }: { realMapNode
           <div className="pb-8 space-y-3">
             <h3 className="font-bold text-slate-900 text-sm tracking-tight text-left ml-1">Quick Tools</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <ActionCard icon={<Navigation className="w-4 h-4"/>} color="bg-blue-500" title="Directions" sub="Smart routing" />
+              <ActionCard icon={<MapIcon className="w-4 h-4"/>} color="bg-blue-500" title="Campus Map" sub="Campus layout" />
               <ActionCard icon={<MapPin className="w-4 h-4"/>} color="bg-emerald-500" title="Nearby" sub="Discover points" />
               <ActionCard icon={<Car className="w-4 h-4"/>} color="bg-indigo-500" title="Parking" sub="Availability list" />
               <ActionCard icon={<Share2 className="w-4 h-4"/>} color="bg-orange-500" title="Share" sub="Send coordinates" />

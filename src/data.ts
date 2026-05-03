@@ -31,7 +31,21 @@ export const floors: FloorName[] = ["Ground", "1st Floor", "2nd Floor", "3rd Flo
 export const CAMPUS_CENTER: [number, number] = [21.222985, 72.878831];
 
 export const pois: POI[] = [
-  // Ground Floor (Cohesive layout inside an 800x800 box approx)
+  // Ground Floor (New Schematic)
+  { id: "admin-001", name: "Trust Office", floor: "Ground", type: "office", lat: 21.2231, lng: 72.8789, description: "Office of the building trust." },
+  { id: "admin-002", name: "Principal Office", floor: "Ground", type: "office", lat: 21.2231, lng: 72.8789, description: "Office of the Principal of SSASIT." },
+  { id: "admin-003", name: "Pantry", floor: "Ground", type: "facility", lat: 21.2231, lng: 72.8789 },
+  { id: "admin-004", name: "Conference Room", floor: "Ground", type: "facility", lat: 21.2231, lng: 72.8789, description: "Primary conference hall for administrative meetings." },
+  { id: "admin-005", name: "Administration Office", floor: "Ground", type: "office", lat: 21.2231, lng: 72.8789, description: "General administration and student services." },
+  { id: "admin-006", name: "EEE, M/C & Project Lab", floor: "Ground", type: "lab", lat: 21.2231, lng: 72.8789 },
+  { id: "admin-007", name: "EME Lab", floor: "Ground", type: "lab", lat: 21.2231, lng: 72.8789 },
+  { id: "admin-008", name: "Workshop", floor: "Ground", type: "lab", lat: 21.2231, lng: 72.8789, description: "Heavy engineering workshop." },
+  { id: "admin-009", name: "Fluid Mechanics & Fluid Power Lab", floor: "Ground", type: "lab", lat: 21.2231, lng: 72.8789 },
+  { id: "admin-010", name: "Transportation & CT Lab", floor: "Ground", type: "lab", lat: 21.2231, lng: 72.8789 },
+  { id: "admin-011", name: "Security", floor: "Ground", type: "facility", lat: 21.2231, lng: 72.8789 },
+  { id: "admin-012", name: "Stationery", floor: "Ground", type: "facility", lat: 21.2231, lng: 72.8789 },
+
+  // Legacy Ground Floor
   { id: "maingate", name: "Campus Entrance", floor: "Ground", type: "entrance", lat: 21.222985, lng: 72.878831, x: 400, y: 780, width: 200, height: 80, description: "Main entry to the campus." },
   { id: "ssasit_marker", name: "SSASIT", floor: "Ground", type: "facility", lat: 21.2230, lng: 72.8790, description: "Shree Swami Atmanand Saraswati Institute of Technology" },
   { id: "admin", name: "Admin Office", floor: "Ground", type: "office", lat: 21.2231, lng: 72.8789, x: 100, y: 350, width: 300, height: 250, description: "Administrative inquiries, fees, and forms.", timing: "10:00 AM - 4:00 PM" },

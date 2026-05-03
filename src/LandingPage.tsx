@@ -191,11 +191,14 @@ export default function LandingPage({ onExplore }: { onExplore: () => void }) {
             <span className="text-[#004a80]">Innovation & Ethics.</span>
           </h2>
           <p className="text-lg md:text-xl text-slate-600 font-medium max-w-2xl mx-auto mb-12 leading-relaxed">
-            Design Thinking Project (BE01R00071). Revolutionizing campus navigation through human-centered digital twins.
+            Design Thinking Project (BE01R00071). Revolutionizing campus mapping through human-centered digital twins.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <button onClick={handleExplore} className="bg-[#880000] text-white px-10 py-4 rounded-xl font-black text-lg shadow-xl shadow-[#880000]/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
-              <LucideMap size={20} /> Launch Navigator
+            <button 
+              onClick={handleExplore} 
+              className="bg-[#880000] text-white px-10 py-4 rounded-xl font-black text-lg shadow-xl shadow-[#880000]/20 hover:scale-105 hover:bg-[#a00000] transition-all duration-300 flex items-center justify-center gap-3"
+            >
+              <LucideMap size={20} /> LAUNCH THE MAP
             </button>
             <a href="#canvases" className="bg-white text-slate-900 border border-slate-200 px-10 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 transition-colors flex items-center justify-center">View 6 Canvases</a>
           </div>
@@ -208,7 +211,13 @@ export default function LandingPage({ onExplore }: { onExplore: () => void }) {
           <div className="relative group">
              <div className="absolute -inset-4 bg-[#004a80]/10 rounded-[4rem] blur-2xl group-hover:bg-[#004a80]/20 transition-all"></div>
              <div className="relative aspect-[4/5] bg-slate-200 rounded-[3rem] overflow-hidden border-8 border-white shadow-2xl">
-               <img src={ASSETS.swamiji} alt="Swamiji" className="w-full h-full object-cover" />
+               <img 
+                src={ASSETS.swamiji} 
+                alt="Swamiji" 
+                className="w-full h-full object-cover" 
+                loading="lazy"
+                decoding="async"
+               />
                <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black/80 to-transparent">
                  <p className="text-white font-black text-2xl tracking-tight">Shree Swami Atmanand Saraswati</p>
                  <p className="text-white/60 font-bold uppercase text-xs tracking-widest">Great Philosopher & Reformer</p>
@@ -222,8 +231,8 @@ export default function LandingPage({ onExplore }: { onExplore: () => void }) {
               In the vast area of 80,000 sq.mt., our project brings modern efficiency to a historic vision of technical excellence.
             </p>
             <div className="border-l-8 border-[#004a80] pl-8 py-4 bg-slate-50 rounded-r-2xl">
-              <blockquote className="text-2xl font-bold italic text-[#004a80] leading-tight">
-                "To build sound engineers with an aura of human values who are determined for social betterment."
+              <blockquote className="text-3xl font-extrabold italic text-[#004a80] leading-snug">
+                "In this era of industrialized and innovative society, the engineer’s role is not just to design or manufacture, but to serve as a visionary technocrat who lightens the lamp of humanity in the global firmament."
               </blockquote>
             </div>
           </div>
@@ -259,6 +268,8 @@ export default function LandingPage({ onExplore }: { onExplore: () => void }) {
                              (canvas.rotate === 90 || canvas.rotate === -90) && !canvas.isVertical && "scale-[1.35]"
                            )}
                            style={{ transform: `rotate(${canvas.rotate}deg)` }}
+                           loading="lazy"
+                           decoding="async"
                          />
                        </div>
                        
@@ -375,7 +386,7 @@ export default function LandingPage({ onExplore }: { onExplore: () => void }) {
             onClick={handleExplore} 
             className="bg-[#880000] text-white px-12 py-5 rounded-xl font-black text-2xl shadow-xl shadow-[#880000]/30 hover:scale-105 transition-transform flex items-center justify-center gap-4 mx-auto"
           >
-            <LucideMap size={32} /> Launch Digital Twin
+            <LucideMap size={32} /> LAUNCH THE MAP
           </button>
         </div>
       </StorySection>

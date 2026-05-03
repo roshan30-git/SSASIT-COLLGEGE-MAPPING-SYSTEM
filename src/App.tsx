@@ -1,20 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { 
   Compass, Search, MapPin, Clock, Info, UserRound, ArrowRight, Menu, 
-  Navigation2, Home, Map as MapIcon, QrCode, BookOpen, Filter, X, Loader2, Volume2, Building2,
+  Navigation2, Globe, Map as MapIcon, QrCode, BookOpen, Filter, X, Loader2, Volume2, Building2,
   Maximize2, Minimize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FloorName, POI, Faculty, floors, pois, facultyList, CAMPUS_CENTER } from './data';
-import OutsideView from './OutsideView';
-import { SVGMap, ThirdFloorSVGMap } from './components/MapComponents';
-import { SecondFloorHTMLMap } from './components/Floor2Map';
-import { FourthFloorHTMLMap } from './components/Floor4Map';
-import { FirstFloorHTMLMap } from './components/Floor1Map';
-import LandingPage from './LandingPage';
-import Gallery from './Gallery';
-import clsx from 'clsx'; // I'll use clsx standard utility
 import cn from 'clsx'; 
+
+// Lazy load heavy components
+const OutsideView = lazy(() => import('./OutsideView'));
+const SVGMap = lazy(() => import('./components/MapComponents').then(m => ({ default: m.SVGMap })));
+const ThirdFloorSVGMap = lazy(() => import('./components/MapComponents').then(m => ({ default: m.ThirdFloorSVGMap })));
+const SecondFloorHTMLMap = lazy(() => import('./components/Floor2Map').then(m => ({ default: m.SecondFloorHTMLMap })));
+const FourthFloorHTMLMap = lazy(() => import('./components/Floor4Map').then(m => ({ default: m.FourthFloorHTMLMap })));
+const FirstFloorHTMLMap = lazy(() => import('./components/Floor1Map').then(m => ({ default: m.FirstFloorHTMLMap })));
+const GroundFloorMap = lazy(() => import('./components/GroundFloorMap').then(m => ({ default: m.GroundFloorMap })));
+const LandingPage = lazy(() => import('./LandingPage'));
+const Gallery = lazy(() => import('./Gallery'));
+
+// Optimized loading component
+const MapLoader = () => (
+  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50/50 backdrop-blur-sm rounded-3xl gap-4">
+    <div className="relative">
+      <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+      <Compass className="w-5 h-5 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+    </div>
+    <div className="flex flex-col items-center text-center">
+      <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Loading Digital Twin</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Calibrating campus schematic...</p>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
@@ -22,6 +39,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPOI, setSelectedPOI] = useState<POI | null>(null);
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [viewMode, setViewMode] = useState<'inside' | 'outside' | 'gallery'>('outside');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -75,10 +93,12 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
           className="w-full h-full"
         >
-          <LandingPage onExplore={() => setShowLanding(false)} />
+          <Suspense fallback={<MapLoader />}>
+            <LandingPage onExplore={() => setShowLanding(false)} />
+          </Suspense>
         </motion.div>
       ) : (
         <motion.div
@@ -134,7 +154,9 @@ export default function App() {
             {viewMode === 'gallery' ? (
               <div className="flex-1 overflow-hidden bg-white rounded-3xl border border-slate-100 shadow-sm relative">
                 <div className="h-full overflow-y-auto">
-                  <Gallery />
+                  <Suspense fallback={<MapLoader />}>
+                    <Gallery />
+                  </Suspense>
                 </div>
               </div>
             ) : viewMode === 'inside' ? (
@@ -175,7 +197,7 @@ export default function App() {
             {/* Map Area */}
             <div className={cn(
               "relative w-full bg-white overflow-hidden shadow-sm border border-slate-100/60 p-2 transition-all flex-1",
-              isFullscreen ? "rounded-2xl h-full flex flex-col" : "aspect-[4/3] md:aspect-video lg:aspect-[16/10] rounded-3xl"
+              isFullscreen ? "rounded-2xl h-full flex flex-col" : "min-h-[500px] aspect-[4/5] md:min-h-0 md:aspect-video lg:aspect-[16/10] rounded-3xl"
             )}>
               {/* Floating labels inside map */}
               <div className="absolute top-4 left-4 z-10">
@@ -198,6 +220,7 @@ export default function App() {
               </div>
 
               <div className="w-full h-full rounded-2xl overflow-hidden bg-[#f8fafc] isolate relative flex-1 min-h-0">
+                <Suspense fallback={<MapLoader />}>
                 {activeFloor === '3rd Floor' ? (
                   <ThirdFloorSVGMap selectedPOI={selectedPOI} onSelectPOI={setSelectedPOI} />
                 ) : activeFloor === '4th Floor' ? (
@@ -206,9 +229,12 @@ export default function App() {
                   <SecondFloorHTMLMap selectedPOI={selectedPOI} onSelectPOI={setSelectedPOI} />
                 ) : activeFloor === '1st Floor' ? (
                   <FirstFloorHTMLMap selectedPOI={selectedPOI} onSelectPOI={setSelectedPOI} />
+                ) : activeFloor === 'Ground' ? (
+                  <GroundFloorMap selectedPOI={selectedPOI} onSelectPOI={setSelectedPOI} />
                 ) : (
                   <SVGMap floor={activeFloor} selectedPOI={selectedPOI} onSelectPOI={setSelectedPOI} />
                 )}
+                </Suspense>
               </div>
             </div>
             </div>
@@ -223,7 +249,14 @@ export default function App() {
                   </button>
                 </div>
                 <div className={cn("w-full transition-all flex-1 min-h-[400px]", isFullscreen ? "h-full rounded-2xl overflow-hidden" : "")}>
-                  <OutsideView isFullscreen={isFullscreen} realMapNode={<LeafletMap floor="Ground" selectedPOI={selectedPOI} onSelectPOI={setSelectedPOI} />} />
+                  <Suspense fallback={<MapLoader />}>
+                    <OutsideView 
+                      floor="Ground" 
+                      selectedPOI={selectedPOI} 
+                      onSelectPOI={setSelectedPOI} 
+                      isFullscreen={isFullscreen} 
+                    />
+                  </Suspense>
                 </div>
               </div>
             )}
@@ -238,7 +271,7 @@ export default function App() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3">
                   <button onClick={() => setSearchQuery('Admin')} className="flex flex-col items-center justify-center p-3.5 bg-[#eef4ff] rounded-2xl gap-2.5 hover:-translate-y-1 transition-transform border border-blue-100/50 text-left">
                     <div className="bg-blue-500 rounded-full p-2.5 text-white shadow-sm shadow-blue-500/20">
-                      <Home className="w-5 h-5" />
+                      <Globe className="w-5 h-5" />
                     </div>
                     <div className="text-center w-full">
                       <div className="text-[11px] font-bold text-slate-800 leading-tight truncate">Admin Office</div>
@@ -324,18 +357,36 @@ export default function App() {
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 flex justify-center z-40 pointer-events-none">
-        <nav className="w-full max-w-[500px] bg-white/90 backdrop-blur-xl border border-slate-100/80 px-6 py-2 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-between pointer-events-auto">
-          <button onClick={() => { setShowLanding(true); setViewMode('outside'); setSelectedPOI(null); }} className="flex flex-col items-center gap-1 p-2 text-blue-600">
-            <Home className="w-[22px] h-[22px] fill-current" />
+        <nav className="w-full max-w-[600px] bg-white/90 backdrop-blur-xl border border-slate-100/80 px-4 py-2 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-between pointer-events-auto gap-1">
+          <button 
+            onClick={() => { setShowLanding(true); setSelectedPOI(null); }} 
+            className={cn("flex flex-col items-center gap-1 p-2 transition-colors", showLanding ? 'text-blue-600' : 'text-slate-400 hover:text-slate-900')}
+          >
+            <Compass className={cn("w-[22px] h-[22px]", showLanding && 'fill-current')} />
             <span className="text-[10px] font-bold md:hidden">Home</span>
           </button>
-          <button onClick={() => setViewMode('inside')} className={cn("flex flex-col items-center gap-1 p-2 transition-colors", viewMode === 'inside' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-900')}>
-            <Building2 className={cn("w-[22px] h-[22px]", viewMode === 'inside' && 'fill-current')} />
+          
+          <button 
+            onClick={() => { setShowLanding(false); setViewMode('outside'); setSelectedPOI(null); }} 
+            className={cn("flex flex-col items-center gap-1 p-2 transition-colors", (!showLanding && viewMode === 'outside') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-900')}
+          >
+            <Globe className={cn("w-[22px] h-[22px]", (!showLanding && viewMode === 'outside') && 'fill-current')} />
+            <span className="text-[10px] font-bold md:hidden">Earth Map</span>
+          </button>
+
+          <button 
+            onClick={() => { setShowLanding(false); setViewMode('inside'); }} 
+            className={cn("flex flex-col items-center gap-1 p-2 transition-colors", (!showLanding && viewMode === 'inside') ? 'text-blue-600' : 'text-slate-400 hover:text-slate-900')}
+          >
+            <Building2 className={cn("w-[22px] h-[22px]", (!showLanding && viewMode === 'inside') && 'fill-current')} />
             <span className="text-[10px] font-bold md:hidden">Inside Map</span>
           </button>
           
-          <div className="relative -top-6">
-            <button onClick={() => alert('QR Scan feature placeholder')} className="bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center hover:-translate-y-1 transition-transform border-[6px] border-slate-50 ring-1 ring-black/5">
+          <div className="relative -top-6 mx-2">
+            <button 
+              onClick={() => setShowQRScanner(true)} 
+              className="bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg shadow-blue-600/30 flex items-center justify-center hover:-translate-y-1 transition-transform border-[6px] border-slate-50 ring-1 ring-black/5"
+            >
               <QrCode className="w-7 h-7" />
             </button>
             <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-700 whitespace-nowrap">Scan QR</span>
@@ -345,15 +396,19 @@ export default function App() {
             onClick={() => { setViewMode('gallery'); setShowLanding(false); }} 
             className={cn(
               "flex flex-col items-center gap-1 p-2 transition-all",
-              viewMode === 'gallery' ? "text-blue-600 scale-110" : "text-slate-400 hover:text-slate-900"
+              (!showLanding && viewMode === 'gallery') ? "text-blue-600" : "text-slate-400 hover:text-slate-900"
             )}
           >
-            <BookOpen className={cn("w-[22px] h-[22px]", viewMode === 'gallery' && "fill-current")} />
+            <BookOpen className={cn("w-[22px] h-[22px]", (!showLanding && viewMode === 'gallery') && "fill-current")} />
             <span className="text-[10px] font-black md:hidden uppercase tracking-widest">Gallery</span>
           </button>
-          <button onClick={() => setShowLanding(true)} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-900 transition-colors">
-            <Info className="w-[22px] h-[22px]" />
-            <span className="text-[10px] font-bold md:hidden">Info</span>
+          
+          <button 
+            onClick={() => setIsSearchActive(true)} 
+            className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-900 transition-colors"
+          >
+            <Search className="w-[22px] h-[22px]" />
+            <span className="text-[10px] font-bold md:hidden">Search</span>
           </button>
         </nav>
       </div>
@@ -449,6 +504,87 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* QR Scanner Overlay */}
+      <AnimatePresence>
+        {showQRScanner && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white"
+          >
+            <button 
+              onClick={() => setShowQRScanner(false)}
+              className="absolute top-8 right-8 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <div className="w-full max-w-sm aspect-square relative mb-12">
+              {/* Camera Simulation Viewfinder */}
+              <div className="absolute inset-0 border-2 border-white/20 rounded-3xl overflow-hidden">
+                <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-4 text-white/30 text-center px-8">
+                    <Loader2 className="w-12 h-12 animate-spin-slow" />
+                    <p className="text-sm font-bold uppercase tracking-widest">Accessing Wayfinding Interface...</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scanned Corners */}
+              <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-blue-500 -translate-x-2 -translate-y-2 rounded-tl-xl"></div>
+              <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-blue-500 translate-x-2 -translate-y-2 rounded-tr-xl"></div>
+              <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-blue-500 -translate-x-2 translate-y-2 rounded-bl-xl"></div>
+              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-blue-500 translate-x-2 translate-y-2 rounded-br-xl"></div>
+              
+              {/* Scanning Line Animation */}
+              <motion.div 
+                animate={{ top: ['10%', '90%'] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                className="absolute left-4 right-4 h-1 bg-blue-500/50 blur-sm z-10 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+              ></motion.div>
+            </div>
+
+            <div className="text-center space-y-4 max-w-xs">
+              <h3 className="text-2xl font-black tracking-tight">Wayfinding Scanner</h3>
+              <p className="text-white/60 text-sm font-medium">Scan QR codes located in various departments to instantly locate yourself on the map.</p>
+              
+              <div className="pt-6 grid grid-cols-1 gap-3">
+                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">Simulate Scanning:</p>
+                <button 
+                  onClick={() => {
+                    handleSelectPOI(pois.find(p => p.id === 'admin-005')!);
+                    setShowQRScanner(false);
+                    setViewMode('outside');
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-4 rounded-2xl flex items-center gap-4 transition-all group"
+                >
+                  <QrCode className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-sm font-bold">Admin QR Code</p>
+                    <p className="text-[10px] text-white/40 uppercase font-black">Locate: Admin Office</p>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => {
+                    handleSelectPOI(pois.find(p => p.id === 'admin-008')!);
+                    setShowQRScanner(false);
+                    setViewMode('outside');
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-4 rounded-2xl flex items-center gap-4 transition-all group"
+                >
+                  <QrCode className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-sm font-bold">Workshop QR Code</p>
+                    <p className="text-[10px] text-white/40 uppercase font-black">Locate: Heavy Engineering</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Global Search Overlay */}
       <AnimatePresence>
         {isSearchActive && (
@@ -541,128 +677,10 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-
-function LeafletMap({ floor, selectedPOI, onSelectPOI }: { floor: FloorName, selectedPOI: POI | null, onSelectPOI: (poi: POI) => void }) {
-  const floorPOIs = pois.filter(p => p.floor === floor);
-
-  return (
-    <div className="w-full h-full relative isolate rounded-3xl overflow-hidden" style={{ minHeight: '400px' }}>
-      <MapContainer 
-        center={CAMPUS_CENTER} 
-        zoom={18} 
-        scrollWheelZoom={true}
-        className="w-full h-full z-0 font-sans"
-        style={{ width: '100%', height: '100%' }}
-        zoomControl={false}
-      >
-        <TileLayer
-          attribution='&copy; Google Maps'
-          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-          maxZoom={22}
-        />
-        <MapController selectedPOI={selectedPOI} center={CAMPUS_CENTER} />
-        {floorPOIs.map(poi => (
-          <POIMarker 
-            key={poi.id} 
-            poi={poi} 
-            isSelected={selectedPOI?.id === poi.id} 
-            onClick={() => onSelectPOI(poi)} 
-          />
-        ))}
-      </MapContainer>
-    </div>
-  );
-}
-
-function MapController({ selectedPOI, center }: { selectedPOI: POI | null, center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map) return;
-    
-    // Invalidate size in case of hidden/shown map container giving NaNs
-    setTimeout(() => {
-      try {
-        map.invalidateSize();
-      } catch (e) {}
-    }, 100);
-
-    try {
-      const isValidCoord = (c: any) => typeof c === 'number' && !Number.isNaN(c) && isFinite(c);
-      const size = map.getSize();
-      const canAnimate = size.x > 0 && size.y > 0;
-
-      if (selectedPOI && isValidCoord(selectedPOI.lat) && isValidCoord(selectedPOI.lng)) {
-        if (canAnimate) {
-            map.flyTo([selectedPOI.lat, selectedPOI.lng], 20, { animate: true, duration: 0.8 });
-        } else {
-            map.setView([selectedPOI.lat, selectedPOI.lng], 20, { animate: false });
-        }
-      } else if (center && isValidCoord(center[0]) && isValidCoord(center[1])) {
-        if (canAnimate) {
-            map.flyTo(center, 18, { animate: true, duration: 0.8 });
-        } else {
-            map.setView(center, 18, { animate: false });
-        }
-      }
-    } catch (e) {
-      console.error("MapController Error", e);
-    }
-  }, [selectedPOI, map, center]);
-  return null;
-}
-
-function POIMarker({ poi, isSelected, onClick }: { key?: string | number, poi: POI, isSelected: boolean, onClick: () => void }) {
-  let bgColorClass = "bg-slate-900/80 backdrop-blur-md";
-  let textColorClass = "text-white";
-  if (poi.type === 'entrance') bgColorClass = "bg-emerald-600/80 backdrop-blur-md";
-  if (poi.type === 'facility') bgColorClass = "bg-amber-500/80 backdrop-blur-md";
-  if (poi.type === 'office') bgColorClass = "bg-purple-600/80 backdrop-blur-md";
-  if (poi.type === 'lab') bgColorClass = "bg-blue-600/80 backdrop-blur-md";
-
-  if (isSelected) {
-    bgColorClass = "bg-blue-600/90 backdrop-blur-md ring-4 ring-blue-600/30";
-    textColorClass = "text-white scale-110";
-  }
-
-  const iconHtml = `
-    <div class="relative flex flex-col items-center justify-center transition-all duration-300 transform -translate-y-1/2">
-      <div class="px-3 py-1.5 rounded-full shadow-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 border-2 border-white ${bgColorClass} ${textColorClass}">
-        ${poi.name}
-      </div>
-      <div class="w-1.5 h-1.5 rounded-full bg-white shadow-sm absolute -bottom-1 z-10 hidden"></div>
-      <div class="w-0.5 h-4 bg-white/80 absolute -bottom-4 shadow-sm z-0"></div>
-      <div class="w-2 h-2 rounded-full ${bgColorClass} absolute -bottom-4 z-10 border border-white"></div>
-    </div>
-  `;
-
-  const customIcon = L.divIcon({
-    html: iconHtml,
-    className: 'custom-poi-marker bg-transparent',
-    iconSize: [0, 0],
-    iconAnchor: [0, 0],
-  });
-
-  if (typeof poi.lat !== 'number' || typeof poi.lng !== 'number' || !isFinite(poi.lat) || !isFinite(poi.lng)) {
-    console.error("Invalid POI coordinates: ", poi);
-    return null;
-  }
-
-  return (
-    <Marker 
-      position={[poi.lat, poi.lng]} 
-      icon={customIcon}
-      eventHandlers={{ click: onClick }}
-    />
-  );
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
 }
 
