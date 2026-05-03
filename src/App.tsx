@@ -12,6 +12,7 @@ import { SecondFloorHTMLMap } from './components/Floor2Map';
 import { FourthFloorHTMLMap } from './components/Floor4Map';
 import { FirstFloorHTMLMap } from './components/Floor1Map';
 import LandingPage from './LandingPage';
+import Gallery from './Gallery';
 import clsx from 'clsx'; // I'll use clsx standard utility
 import cn from 'clsx'; 
 
@@ -21,7 +22,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPOI, setSelectedPOI] = useState<POI | null>(null);
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [viewMode, setViewMode] = useState<'inside' | 'outside'>('outside');
+  const [viewMode, setViewMode] = useState<'inside' | 'outside' | 'gallery'>('outside');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Check URL params for "start" location (e.g. ?start=maingate)
@@ -130,7 +131,13 @@ export default function App() {
               ? "fixed inset-0 z-50 bg-slate-50 p-2 sm:p-4 lg:p-6 !m-0" 
               : "lg:col-span-7 xl:col-span-8"
           )}>
-            {viewMode === 'inside' ? (
+            {viewMode === 'gallery' ? (
+              <div className="flex-1 overflow-hidden bg-white rounded-3xl border border-slate-100 shadow-sm relative">
+                <div className="h-full overflow-y-auto">
+                  <Gallery />
+                </div>
+              </div>
+            ) : viewMode === 'inside' ? (
             <div className="flex flex-col h-full w-full gap-4">
             {/* Floor Selector */}
             <div className="relative group/floors">
@@ -318,7 +325,7 @@ export default function App() {
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 lg:p-8 flex justify-center z-40 pointer-events-none">
         <nav className="w-full max-w-[500px] bg-white/90 backdrop-blur-xl border border-slate-100/80 px-6 py-2 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center justify-between pointer-events-auto">
-          <button onClick={() => { setViewMode('outside'); setSelectedPOI(null); }} className="flex flex-col items-center gap-1 p-2 text-blue-600">
+          <button onClick={() => { setShowLanding(true); setViewMode('outside'); setSelectedPOI(null); }} className="flex flex-col items-center gap-1 p-2 text-blue-600">
             <Home className="w-[22px] h-[22px] fill-current" />
             <span className="text-[10px] font-bold md:hidden">Home</span>
           </button>
@@ -334,11 +341,17 @@ export default function App() {
             <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-700 whitespace-nowrap">Scan QR</span>
           </div>
 
-          <button onClick={() => alert('Directory feature placeholder')} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-900 transition-colors">
-            <BookOpen className="w-[22px] h-[22px]" />
-            <span className="text-[10px] font-bold md:hidden">Directory</span>
+          <button 
+            onClick={() => { setViewMode('gallery'); setShowLanding(false); }} 
+            className={cn(
+              "flex flex-col items-center gap-1 p-2 transition-all",
+              viewMode === 'gallery' ? "text-blue-600 scale-110" : "text-slate-400 hover:text-slate-900"
+            )}
+          >
+            <BookOpen className={cn("w-[22px] h-[22px]", viewMode === 'gallery' && "fill-current")} />
+            <span className="text-[10px] font-black md:hidden uppercase tracking-widest">Gallery</span>
           </button>
-          <button onClick={() => alert('Info feature placeholder')} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={() => setShowLanding(true)} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-900 transition-colors">
             <Info className="w-[22px] h-[22px]" />
             <span className="text-[10px] font-bold md:hidden">Info</span>
           </button>
